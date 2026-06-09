@@ -5,7 +5,7 @@
   <version>1.0.0</version>
   <description>PAIRS UAV controller plugins — SE3 controller, MPC controller, failsafe controller</description>
 
-  <maintainer email="alex@dsc-labs.io">PAIRS Team</maintainer>
+  <maintainer email="canhthanh@vnu.edu.vn">Thanh Nguyen Canh</maintainer>
 
   <license>BSD 3-Clause</license>
 
