@@ -1,0 +1,23 @@
+<library path="PairsUavControllers_MpcController">
+  <class type="pairs_uav_controllers::mpc_controller::MpcController" base_class_type="pairs_uav_managers::Controller">
+    <description>MpcController</description>
+  </class>
+</library>
+
+<library path="PairsUavControllers_Se3Controller">
+  <class type="pairs_uav_controllers::se3_controller::Se3Controller" base_class_type="pairs_uav_managers::Controller">
+    <description>Se3Controller</description>
+  </class>
+</library>
+
+<library path="PairsUavControllers_FailsafeController">
+  <class type="pairs_uav_controllers::failsafe_controller::FailsafeController" base_class_type="pairs_uav_managers::Controller">
+    <description>FailsafeController</description>
+  </class>
+</library>
+
+<library path="PairsUavControllers_MidairActivationController">
+  <class type="pairs_uav_controllers::midair_activation_controller::MidairActivationController" base_class_type="pairs_uav_managers::Controller">
+    <description>MidairActivationController</description>
+  </class>
+</library>

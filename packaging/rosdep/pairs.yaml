@@ -1,0 +1,18 @@
+# Local rosdep rules for PAIRS packages not in the public rosdep index (ROS 2 Jazzy).
+# Lets bloom/rosdep resolve inter-package dependencies to their Debian package names
+# during the .deb build.
+pairs_msgs:
+  ubuntu: [ros-jazzy-pairs-msgs]
+pairs_lib:
+  ubuntu: [ros-jazzy-pairs-lib]
+pairs_uav_hw_api:
+  ubuntu: [ros-jazzy-pairs-uav-hw-api]
+pairs_mpc_solvers:
+  ubuntu: [ros-jazzy-pairs-mpc-solvers]
+pairs_uav_managers:
+  ubuntu: [ros-jazzy-pairs-uav-managers]
+pairs_uav_controllers:
+  ubuntu: [ros-jazzy-pairs-uav-controllers]
+# test-only dep (mapped so bloom can resolve the key; not installed during the build)
+pairs_uav_testing:
+  ubuntu: [ros-jazzy-pairs-uav-testing]

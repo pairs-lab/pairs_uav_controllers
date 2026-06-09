@@ -1,114 +1,219 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.15)
 project(pairs_uav_controllers)
 
-set(CMAKE_CXX_STANDARD 17)
+# set the correct standards
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_definitions(-Wall -Wextra -Wpedantic)
+# 1 == use rclcpp::Timer implementation
+# 0 == use PAIRS's thread timer implementation
+set(USE_ROS_TIMER 0)
 
-if(COVERAGE)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+if(${USE_ROS_TIMER})
+  MESSAGE(WARNING "[pairs_uav_controllers]: Compiling with ROS Timers. This can cause high CPU load in runtime.")
 endif()
 
-set(CATKIN_DEPENDENCIES
-  cmake_modules
-  dynamic_reconfigure
-  geometry_msgs
-  pairs_lib
+# set the compile options to show code warnings
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra)
+endif()
+
+if(ENABLE_COVERAGE)
+  message(WARNING "building for coverage, the performance might be limited")
+
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage -fprofile-arcs")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -fprofile-arcs")
+
+  add_definitions("-O1")
+  add_definitions("-g")
+endif()
+
+set(DEPENDENCIES
+  rclcpp
+  rclcpp_components
   pairs_msgs
-  pairs_uav_managers
+  pairs_lib
   pluginlib
-  roscpp
-  rospy
+  geometry_msgs
+  sensor_msgs
+  pairs_uav_managers
+  Eigen3
+  pairs_mpc_solvers
   pairs_uav_testing
-  )
-
-find_package(catkin REQUIRED COMPONENTS ${CATKIN_DEPENDENCIES})
-find_package(Eigen3 REQUIRED)
-set(Eigen_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
-set(Eigen_LIBRARIES ${EIGEN3_LIBRARIES})
-
-generate_dynamic_reconfigure_options(
-  cfg/se3_controller.cfg
-  cfg/mpc_controller.cfg
-  )
-
-# Detect architecture for pre-compiled MPC solver binary
-execute_process(COMMAND dpkg-architecture -qDEB_HOST_ARCH
-  OUTPUT_VARIABLE CMAKE_DEB_HOST_ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-if(${CMAKE_DEB_HOST_ARCH} MATCHES "amd64|x64")
-  set(MPC_CONTROLLER_SOLVER_BIN
-    ${PROJECT_SOURCE_DIR}/lib/MpcControllerSolver/x64/libMpcControllerSolver.so)
-elseif(${CMAKE_DEB_HOST_ARCH} MATCHES "arm64")
-  set(MPC_CONTROLLER_SOLVER_BIN
-    ${PROJECT_SOURCE_DIR}/lib/MpcControllerSolver/arm64/libMpcControllerSolver.so)
-else()
-  message(FATAL_ERROR "MpcControllerSolver.so not available for ${CMAKE_DEB_HOST_ARCH}")
-endif()
+)
 
 set(LIBRARIES
-  PairsUavControllers_Se3Controller
   PairsUavControllers_MpcController
+  PairsUavControllers_Se3Controller
   PairsUavControllers_FailsafeController
   PairsUavControllers_MidairActivationController
   )
 
-catkin_package(
-  INCLUDE_DIRS include
-  CATKIN_DEPENDS ${CATKIN_DEPENDENCIES}
-  LIBRARIES ${LIBRARIES}
-  DEPENDS Eigen
+foreach(DEP IN LISTS DEPENDENCIES)
+  find_package(${DEP} REQUIRED)
+endforeach()
+
+include_directories(
+  include
+  ${pairs_lib_INCLUDE_DIRS}
+  ${pairs_uav_managers_INCLUDE_DIRS}
+  ${pairs_mpc_solvers_INCLUDE_DIRS}
+  ${pairs_uav_testing_INCLUDE_DIRS}
+  ${rclcpp_INCLUDE_DIRS}
+)
+
+# MPC Controller
+
+add_library(PairsUavControllers_MpcController SHARED
+  src/mpc_controller.cpp
+  src/common.cpp
   )
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS})
-
-add_library(PairsUavControllers_Se3Controller
-  src/se3_controller.cpp src/common.cpp)
-add_dependencies(PairsUavControllers_Se3Controller
-  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
-  ${PROJECT_NAME}_gencfg)
-target_link_libraries(PairsUavControllers_Se3Controller
-  ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
-
-add_library(PairsUavControllers_MpcController
-  src/mpc_controller.cpp src/common.cpp)
-add_dependencies(PairsUavControllers_MpcController
-  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
-  ${PROJECT_NAME}_gencfg)
 target_link_libraries(PairsUavControllers_MpcController
-  ${catkin_LIBRARIES} ${MPC_CONTROLLER_SOLVER_BIN} ${Eigen_LIBRARIES})
+  rclcpp::rclcpp
+  rclcpp_components::component
+  ${pairs_msgs_TARGETS}
+  pairs_lib::pairs_lib
+  pluginlib::pluginlib
+  ${geometry_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  pairs_uav_managers::pairs_uav_managers
+  Eigen3::Eigen
+  ${pairs_mpc_solvers_TARGETS}
+  pairs_uav_testing::pairs_uav_testing
+  )
 
-add_library(PairsUavControllers_FailsafeController
-  src/failsafe_controller.cpp src/common.cpp)
-add_dependencies(PairsUavControllers_FailsafeController
-  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_compile_definitions(PairsUavControllers_MpcController PRIVATE USE_ROS_TIMER=${USE_ROS_TIMER})
+
+# SE3 Controller
+
+add_library(PairsUavControllers_Se3Controller SHARED
+  src/se3_controller.cpp
+  src/common.cpp
+  )
+
+target_link_libraries(PairsUavControllers_Se3Controller
+  rclcpp::rclcpp
+  rclcpp_components::component
+  ${pairs_msgs_TARGETS}
+  pairs_lib::pairs_lib
+  pluginlib::pluginlib
+  ${geometry_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  pairs_uav_managers::pairs_uav_managers
+  Eigen3::Eigen
+  ${pairs_mpc_solvers_TARGETS}
+  pairs_uav_testing::pairs_uav_testing
+  )
+
+target_compile_definitions(PairsUavControllers_Se3Controller PRIVATE USE_ROS_TIMER=${USE_ROS_TIMER})
+
+# Failsafe Controller
+
+add_library(PairsUavControllers_FailsafeController SHARED
+  src/failsafe_controller.cpp
+  src/common.cpp
+  )
+
 target_link_libraries(PairsUavControllers_FailsafeController
-  ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
+  rclcpp::rclcpp
+  rclcpp_components::component
+  ${pairs_msgs_TARGETS}
+  pairs_lib::pairs_lib
+  pluginlib::pluginlib
+  ${geometry_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  pairs_uav_managers::pairs_uav_managers
+  Eigen3::Eigen
+  ${pairs_mpc_solvers_TARGETS}
+  pairs_uav_testing::pairs_uav_testing
+  )
 
-add_library(PairsUavControllers_MidairActivationController
-  src/midair_activation_controller.cpp src/common.cpp)
-add_dependencies(PairsUavControllers_MidairActivationController
-  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_compile_definitions(PairsUavControllers_FailsafeController PRIVATE USE_ROS_TIMER=${USE_ROS_TIMER})
+
+# Midair Activation Controller
+
+add_library(PairsUavControllers_MidairActivationController SHARED
+  src/midair_activation_controller.cpp
+  src/common.cpp
+  )
+
 target_link_libraries(PairsUavControllers_MidairActivationController
-  ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
+  rclcpp::rclcpp
+  rclcpp_components::component
+  ${pairs_msgs_TARGETS}
+  pairs_lib::pairs_lib
+  pluginlib::pluginlib
+  ${geometry_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  pairs_uav_managers::pairs_uav_managers
+  Eigen3::Eigen
+  pairs_uav_testing::pairs_uav_testing
+  )
 
-if(CATKIN_ENABLE_TESTING AND PAIRS_ENABLE_TESTING)
-  message(WARNING "Testing enabled.")
+target_compile_definitions(PairsUavControllers_MidairActivationController PRIVATE USE_ROS_TIMER=${USE_ROS_TIMER})
+
+## --------------------------------------------------------------
+## |                       export plugins                       |
+## --------------------------------------------------------------
+
+# <package of the base class>, <relative path to the xml>
+pluginlib_export_plugin_description_file(pairs_uav_managers plugins.xml)
+
+## --------------------------------------------------------------
+## |                           testing                          |
+## --------------------------------------------------------------
+
+if(ENABLE_TESTS)
+
   add_subdirectory(test)
+
 endif()
 
-install(TARGETS ${LIBRARIES}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
-  )
+## --------------------------------------------------------------
+## |                           install                          |
+## --------------------------------------------------------------
 
-install(DIRECTORY config
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-  )
+ament_export_libraries(
+  ${LIBRARIES}
+)
 
-install(FILES plugins.xml
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-  )
+install(
+  TARGETS ${LIBRARIES}
+  EXPORT export_${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+install(
+  DIRECTORY include
+  DESTINATION .
+)
+
+install(
+  DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY scripts
+  USE_SOURCE_PERMISSIONS
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+ament_export_include_directories(
+  include
+)
+
+ament_export_targets(
+  export_${PROJECT_NAME} HAS_LIBRARY_TARGET
+)
+
+ament_export_dependencies(
+  ${DEPENDENCIES}
+)
+
+ament_package()
