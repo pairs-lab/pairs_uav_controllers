@@ -41,7 +41,6 @@ set(DEPENDENCIES
   pairs_uav_managers
   Eigen3
   pairs_mpc_solvers
-  pairs_uav_testing
 )
 
 set(LIBRARIES
