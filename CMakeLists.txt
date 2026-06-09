@@ -59,7 +59,6 @@ include_directories(
   ${pairs_lib_INCLUDE_DIRS}
   ${pairs_uav_managers_INCLUDE_DIRS}
   ${pairs_mpc_solvers_INCLUDE_DIRS}
-  ${pairs_uav_testing_INCLUDE_DIRS}
   ${rclcpp_INCLUDE_DIRS}
 )
 
@@ -81,7 +80,6 @@ target_link_libraries(PairsUavControllers_MpcController
   pairs_uav_managers::pairs_uav_managers
   Eigen3::Eigen
   ${pairs_mpc_solvers_TARGETS}
-  pairs_uav_testing::pairs_uav_testing
   )
 
 target_compile_definitions(PairsUavControllers_MpcController PRIVATE USE_ROS_TIMER=${USE_ROS_TIMER})
@@ -104,7 +102,6 @@ target_link_libraries(PairsUavControllers_Se3Controller
   pairs_uav_managers::pairs_uav_managers
   Eigen3::Eigen
   ${pairs_mpc_solvers_TARGETS}
-  pairs_uav_testing::pairs_uav_testing
   )
 
 target_compile_definitions(PairsUavControllers_Se3Controller PRIVATE USE_ROS_TIMER=${USE_ROS_TIMER})
@@ -127,7 +124,6 @@ target_link_libraries(PairsUavControllers_FailsafeController
   pairs_uav_managers::pairs_uav_managers
   Eigen3::Eigen
   ${pairs_mpc_solvers_TARGETS}
-  pairs_uav_testing::pairs_uav_testing
   )
 
 target_compile_definitions(PairsUavControllers_FailsafeController PRIVATE USE_ROS_TIMER=${USE_ROS_TIMER})
@@ -149,7 +145,6 @@ target_link_libraries(PairsUavControllers_MidairActivationController
   ${sensor_msgs_TARGETS}
   pairs_uav_managers::pairs_uav_managers
   Eigen3::Eigen
-  pairs_uav_testing::pairs_uav_testing
   )
 
 target_compile_definitions(PairsUavControllers_MidairActivationController PRIVATE USE_ROS_TIMER=${USE_ROS_TIMER})
