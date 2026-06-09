@@ -1,16 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(pairs_uav_controllers)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-add_definitions(-Wall -Wextra -Wpedantic)
-
-if(COVERAGE)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-endif()
-
 set(CATKIN_DEPENDENCIES
   cmake_modules
   dynamic_reconfigure
@@ -24,29 +14,34 @@ set(CATKIN_DEPENDENCIES
   pairs_uav_testing
   )
 
-find_package(catkin REQUIRED COMPONENTS ${CATKIN_DEPENDENCIES})
-find_package(Eigen3 REQUIRED)
-set(Eigen_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
-set(Eigen_LIBRARIES ${EIGEN3_LIBRARIES})
+find_package(catkin REQUIRED COMPONENTS
+  ${CATKIN_DEPENDENCIES}
+  )
 
 generate_dynamic_reconfigure_options(
   cfg/se3_controller.cfg
   cfg/mpc_controller.cfg
   )
 
-# Detect architecture for pre-compiled MPC solver binary
-execute_process(COMMAND dpkg-architecture -qDEB_HOST_ARCH
-  OUTPUT_VARIABLE CMAKE_DEB_HOST_ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(${CMAKE_DEB_HOST_ARCH} MATCHES "amd64|x64")
-  set(MPC_CONTROLLER_SOLVER_BIN
-    ${PROJECT_SOURCE_DIR}/lib/MpcControllerSolver/x64/libMpcControllerSolver.so)
-elseif(${CMAKE_DEB_HOST_ARCH} MATCHES "arm64")
-  set(MPC_CONTROLLER_SOLVER_BIN
-    ${PROJECT_SOURCE_DIR}/lib/MpcControllerSolver/arm64/libMpcControllerSolver.so)
-else()
-  message(FATAL_ERROR "MpcControllerSolver.so not available for ${CMAKE_DEB_HOST_ARCH}")
+add_definitions(-Wall)
+add_definitions(-Wextra)
+
+if(COVERAGE)
+  message(WARNING "building with --coverage, the performance might be limited")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
 endif()
+
+add_definitions(-Wall)
+add_definitions(-Wextra)
+add_definitions(-Wpedantic)
+
+find_package(Eigen3 REQUIRED)
+set(Eigen_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
+set(Eigen_LIBRARIES ${Eigen_LIBRARIES})
 
 set(LIBRARIES
   PairsUavControllers_Se3Controller
@@ -62,42 +57,125 @@ catkin_package(
   DEPENDS Eigen
   )
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS})
+include_directories(
+  include
+  ${catkin_INCLUDE_DIRS}
+  ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
+  )
+
+# Mpc Solver Library
+
+# Store in CMAKE_DEB_HOST_ARCH var the current build architecture
+execute_process(COMMAND
+  dpkg-architecture
+  -qDEB_HOST_ARCH
+  OUTPUT_VARIABLE
+  CMAKE_DEB_HOST_ARCH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
+# deduce the library path based on the system architecture
+if(${CMAKE_DEB_HOST_ARCH} MATCHES "armhf")
+  MESSAGE(FATAL_ERROR "Mising MpcControllerSolver.so for armhf")
+elseif(${CMAKE_DEB_HOST_ARCH} MATCHES "i386")
+  MESSAGE(FATAL_ERROR "Mising MpcControllerSolver.so for i386")
+elseif(${CMAKE_DEB_HOST_ARCH} MATCHES "x64")
+  set(MPC_CONTROLLER_SOLVER_BIN ${PROJECT_SOURCE_DIR}/lib/MpcControllerSolver/x64/libMpcControllerSolver.so)
+elseif(${CMAKE_DEB_HOST_ARCH} MATCHES "amd64")
+  set(MPC_CONTROLLER_SOLVER_BIN ${PROJECT_SOURCE_DIR}/lib/MpcControllerSolver/x64/libMpcControllerSolver.so)
+elseif(${CMAKE_DEB_HOST_ARCH} MATCHES "arm64")
+  set(MPC_CONTROLLER_SOLVER_BIN ${PROJECT_SOURCE_DIR}/lib/MpcControllerSolver/arm64/libMpcControllerSolver.so)
+else()
+  MESSAGE(FATAL_ERROR ${CMAKE_DEB_HOST_ARCH})
+  MESSAGE(FATAL_ERROR "MpcControllerSolver.so has not been selected, check CMakeLists.txt.")
+endif()
+
+# SE3 controller
 
 add_library(PairsUavControllers_Se3Controller
-  src/se3_controller.cpp src/common.cpp)
+  src/se3_controller.cpp
+  src/common.cpp
+  )
+
 add_dependencies(PairsUavControllers_Se3Controller
-  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
-  ${PROJECT_NAME}_gencfg)
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+  ${PROJECT_NAME}_gencfg
+  )
+
 target_link_libraries(PairsUavControllers_Se3Controller
-  ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
+  ${catkin_LIBRARIES}
+  ${Eigen_LIBRARIES}
+  )
+
+# Mpc controller
 
 add_library(PairsUavControllers_MpcController
-  src/mpc_controller.cpp src/common.cpp)
+  src/mpc_controller.cpp
+  src/common.cpp
+  )
+
 add_dependencies(PairsUavControllers_MpcController
-  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
-  ${PROJECT_NAME}_gencfg)
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+  ${PROJECT_NAME}_gencfg
+  )
+
 target_link_libraries(PairsUavControllers_MpcController
-  ${catkin_LIBRARIES} ${MPC_CONTROLLER_SOLVER_BIN} ${Eigen_LIBRARIES})
+  ${catkin_LIBRARIES}
+  ${MPC_CONTROLLER_SOLVER_BIN}
+  ${Eigen_LIBRARIES}
+  )
+
+# Failsafe controller
 
 add_library(PairsUavControllers_FailsafeController
-  src/failsafe_controller.cpp src/common.cpp)
+  src/failsafe_controller.cpp
+  src/common.cpp
+  )
+
 add_dependencies(PairsUavControllers_FailsafeController
-  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+  )
+
 target_link_libraries(PairsUavControllers_FailsafeController
-  ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
+  ${catkin_LIBRARIES}
+  ${Eigen_LIBRARIES}
+  )
+
+# Midair Activation Controller
 
 add_library(PairsUavControllers_MidairActivationController
-  src/midair_activation_controller.cpp src/common.cpp)
+  src/midair_activation_controller.cpp
+  src/common.cpp
+  )
+
 add_dependencies(PairsUavControllers_MidairActivationController
-  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+  )
+
 target_link_libraries(PairsUavControllers_MidairActivationController
-  ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
+  ${catkin_LIBRARIES}
+  ${Eigen_LIBRARIES}
+  )
+
+## --------------------------------------------------------------
+## |                           Testing                          |
+## --------------------------------------------------------------
 
 if(CATKIN_ENABLE_TESTING AND PAIRS_ENABLE_TESTING)
+
   message(WARNING "Testing enabled.")
+
   add_subdirectory(test)
+
 endif()
+
+## --------------------------------------------------------------
+## |                           Install                          |
+## --------------------------------------------------------------
 
 install(TARGETS ${LIBRARIES}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
@@ -109,6 +187,20 @@ install(DIRECTORY config
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   )
 
+install(FILES ${MPC_CONTROLLER_SOLVER_BIN}
+  DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  )
+
 install(FILES plugins.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  )
+
+install(DIRECTORY scripts/
+  USE_SOURCE_PERMISSIONS
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  )
+
+install(DIRECTORY scripts
+  USE_SOURCE_PERMISSIONS
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   )

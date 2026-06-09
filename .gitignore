@@ -1,6 +1,25 @@
+# temp / editor files
+*~
+*.swp
+*.swo
+*.swn
+
+# catkin / colcon build artifacts
 .catkin_tools/
 build/
 devel/
+install/
+log/
 logs/
 *.pyc
 __pycache__/
+
+# Debian packaging artifacts (never commit built .deb / bloom output)
+packaging/output/
+debian/
+obj-*/
+*.deb
+*.ddeb
+
+# NOTE: lib/MpcControllerSolver/**/*.so is the vendored prebuilt MPC solver
+# and MUST be committed — do not add a blanket *.so ignore.

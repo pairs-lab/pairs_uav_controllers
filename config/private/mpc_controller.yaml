@@ -1,0 +1,69 @@
+pairs_uav_controllers:
+
+  mpc_controller:
+
+    mpc:
+
+      mpc_model:
+
+        number_of_states: 3
+
+        dt1: 0.01
+        dt2: 0.20
+
+      mpc_parameters:
+
+        horizon_length: 26
+
+        horizontal:
+
+          Q: [500, 100, 100] # state error penalization
+          S: [1000, 300, 300] # last state error penalization
+
+          max_speed: 2.0
+          max_acceleration: 2.0
+          max_jerk: 5.0
+
+        vertical:
+
+          Q: [100, 10, 10] # state error penalization
+          S: [100, 10, 10] # last state error penalization
+
+          max_speed: 2.0
+          max_acceleration: 2.0
+          max_u: 50.0
+
+      solver:
+
+        verbose: false
+        max_iterations: 45
+
+    so3:
+
+      gain_filtering:
+
+        rate: 10.0 # [Hz]
+
+        perc_change_rate: 1.0 # [100%/s]
+        min_change_rate: 0.2 # perc of the difference
+
+        # gains can be muted by the tracker by this factor
+        # gains are also muting just after activation
+        gain_mute_coefficient: 0.5
+
+      # saturations and limits
+      constraints:
+
+        throttle_saturation: 0.9 # [-], range from 0 to 1
+
+        # When the controller wants to output tilt larger than this,
+        # it will return an empty command instead, which should trigger
+        # a failsafe in the control manager.
+        tilt_angle_failsafe:
+          enabled: true
+          limit: 90.0 # [deg]
+
+      angular_rate_feedforward:
+
+        # jerk feed forward
+        jerk: true
