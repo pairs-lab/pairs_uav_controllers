@@ -28,5 +28,3 @@ sudo apt install ros-noetic-pairs-uav-controllers
 
 BSD 3-Clause. Derived from the CTU-MRS `pairs_uav_controllers` package; the
 original copyright is retained in [LICENSE](LICENSE).
-
-Maintainer: Thanh Nguyen Canh <canhthanh@vnu.edu.vn>
