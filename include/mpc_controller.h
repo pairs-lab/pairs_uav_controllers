@@ -5,7 +5,7 @@
 #include <eigen3/Eigen/Eigen>
 #include <mutex>
 
-namespace mrs_mpc_solvers
+namespace pairs_mpc_solvers
 {
 
 namespace mpc_controller
@@ -51,6 +51,6 @@ private:
 
 }  // namespace mpc_controller
 
-}  // namespace mrs_mpc_solvers
+}  // namespace pairs_mpc_solvers
 
 #endif
